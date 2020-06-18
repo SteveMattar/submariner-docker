@@ -46,17 +46,20 @@ ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG SUMMARY
-RUN microdnf update && microdnf clean all
 
-#RUN adduser -r -u 1001010000 submariner
+RUN microdnf update && \
+    microdnf -y install --nodocs shadow-utils && \
+    microdnf clean all
 
-COPY --from=builder $REMOTE_SOURCE_DIR/bin/lighthouse-agent $REMOTE_SOURCE_DIR/package/lighthouse-agent.sh /usr/local/bin/
+RUN adduser -r -l -u 1001010000 -G root lighthouse
+
+COPY --from=builder --chown=lighthouse:lighthouse $REMOTE_SOURCE_DIR/bin/lighthouse-agent $REMOTE_SOURCE_DIR/package/lighthouse-agent.sh /usr/local/bin/
 
 RUN chmod a+x /usr/local/bin/lighthouse-agent /usr/local/bin/lighthouse-agent.sh
 
 USER 1001010000
 
-ENTRYPOINT ["/usr/local/bin/lighthouse-agent", "-alsologtostderr"]
+ENTRYPOINT ["/usr/local/bin/lighthouse-agent.sh"]
 
 LABEL com.redhat.component="lighthouse-agent-container" \
       name="submariner-io/lighthouse-agent-rhel8" \

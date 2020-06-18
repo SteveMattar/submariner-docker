@@ -53,19 +53,21 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG SUMMARY
 
-RUN microdnf update && microdnf clean all
+RUN microdnf update && \
+    microdnf -y install --nodocs shadow-utils && \
+    microdnf clean all
 
-#RUN adduser -r -u 1001010000 submariner
+RUN adduser -r -l -u 1001010000 -G root lighthouse
 
-COPY --from=builder $REMOTE_SOURCE_DIR/bin/lighthouse-coredns /usr/local/bin/
+COPY --from=builder --chown=lighthouse:lighthouse $REMOTE_SOURCE_DIR/bin/lighthouse-coredns /usr/local/bin/
 
 RUN chmod a+x /usr/local/bin/lighthouse-coredns
 
 RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/lighthouse-coredns
 
-EXPOSE 53 53/udp
-
 USER 1001010000
+
+EXPOSE 53 53/udp
 
 ENTRYPOINT ["/usr/local/bin/lighthouse-coredns"]
 

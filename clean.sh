@@ -1,6 +1,6 @@
 #!/bin/bash
 
-GOPATH="${GOPATH:-~/go}"
+GOPATH="${GOPATH:-$HOME/go}"
 
 cd $GOPATH/src/github.com/submariner-io/submariner && \
 make cleanup

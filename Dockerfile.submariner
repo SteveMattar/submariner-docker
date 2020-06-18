@@ -46,26 +46,33 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG SUMMARY
 
+# iproute and iptables are used internally
+# libreswan & ldns provide IKE
+# procps-ng is needed for sysctl
+# shadow-utils is needed for adduser
 RUN microdnf update && \
     curl -OL http://download.eng.bos.redhat.com/brewroot/vol/rhel-8/packages/ldns/1.7.0/21.el8/x86_64/ldns-1.7.0-21.el8.x86_64.rpm && \
     curl http://brew-task-repos.usersys.redhat.com/repos/official/libreswan/3.32/1.el8/libreswan-3.32-1.el8.repo > /etc/yum.repos.d/brew.repo && \
     rpm -ivh ldns-1.7.0-21.el8.x86_64.rpm && \
     rm -f ldns-1.7.0-21.el8.x86_64.rpm && \
-    microdnf -y install --nodocs iproute iptables libreswan procps-ng && \
+    microdnf -y install --nodocs iproute iptables libreswan procps-ng shadow-utils && \
     microdnf clean all
 
-#RUN adduser -r -u 1001010000 submariner
+RUN adduser -r -l -u 1001010000 -G root submariner
 
-COPY --from=builder $REMOTE_SOURCE_DIR/package/submariner-engine $REMOTE_SOURCE_DIR/package/submariner.sh $REMOTE_SOURCE_DIR/package/pluto /usr/local/bin/
+RUN mkdir -p /etc/ipsec && chmod -R 775 /etc/ipsec.d
+
+COPY --from=builder --chown=submariner:submariner $REMOTE_SOURCE_DIR/package/submariner-engine $REMOTE_SOURCE_DIR/package/submariner.sh $REMOTE_SOURCE_DIR/package/pluto /usr/local/bin/
 
 # Wrapper scripts to use iptables from the host when that's available
-COPY --from=builder $REMOTE_SOURCE_DIR/package/iptables-wrapper.in /usr/sbin/
+COPY --from=builder --chown=submariner:submariner $REMOTE_SOURCE_DIR/package/iptables-wrapper.in /usr/sbin/
 
 RUN chmod a+x /usr/local/bin/submariner-engine /usr/local/bin/submariner.sh /usr/local/bin/pluto
 
-USER 1001010000
+# TODO: pluto & submariner.sh require to be run as superuser
+#USER 1001010000
 
-ENTRYPOINT ["/usr/local/bin/submariner-engine", "-v=3", "-alsologtostderr"]
+ENTRYPOINT ["/usr/local/bin/submariner.sh"]
 
 LABEL com.redhat.component="submariner-container" \
       name="submariner-io/submariner-rhel8" \

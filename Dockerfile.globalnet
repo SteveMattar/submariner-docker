@@ -47,21 +47,22 @@ ARG IMAGE_DESCRIPTION
 ARG SUMMARY
 
 RUN microdnf update && \
-    microdnf -y install --nodocs iproute iptables && \
+    microdnf -y install --nodocs iproute iptables shadow-utils && \
     microdnf clean all
 
-#RUN adduser -r -u 1001010000 submariner
+RUN adduser -r -l -u 1001010000 -G root submariner
 
-COPY --from=builder $REMOTE_SOURCE_DIR/package/submariner-globalnet $REMOTE_SOURCE_DIR/package/submariner-globalnet.sh /usr/local/bin/
+COPY --from=builder --chown=submariner:submariner $REMOTE_SOURCE_DIR/package/submariner-globalnet $REMOTE_SOURCE_DIR/package/submariner-globalnet.sh /usr/local/bin/
 
 # Wrapper scripts to use iptables from the host when that's available
-COPY --from=builder $REMOTE_SOURCE_DIR/package/iptables-wrapper.in /usr/sbin/
+COPY --from=builder --chown=submariner:submariner $REMOTE_SOURCE_DIR/package/iptables-wrapper.in /usr/sbin/
 
 RUN chmod a+x /usr/local/bin/submariner-globalnet /usr/local/bin/submariner-globalnet.sh
 
-USER 1001010000
+# TODO: submariner-globalnet.sh and some go modules require to be run as superuser
+#USER 1001010000
 
-ENTRYPOINT ["/usr/local/bin/submariner-globalnet", "-alsologtostderr"]
+ENTRYPOINT ["/usr/local/bin/submariner-globalnet.sh"]
 
 LABEL com.redhat.component="submariner-globalnet-container" \
       name="submariner-io/submariner-globalnet-rhel8" \
