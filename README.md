@@ -18,6 +18,12 @@ export PATH=$PATH:~/.local/bin
 echo export PATH=\$PATH:~/.local/bin >> ~/.profile
 ```
 
+### install xunit-viewer
+
+```bash
+npm i -g xunit-viewer
+```
+
 ## Instructions
 
 ```bash
@@ -26,3 +32,7 @@ push.sh
 run.sh
 clean.sh
 ```
+
+## Xunit Viewer
+
+[report](https://stevemattar.github.io/submariner-docker/)
