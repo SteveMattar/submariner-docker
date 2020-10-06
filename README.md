@@ -7,7 +7,7 @@
 ```bash
 git clone https://github.com/submariner-io/submariner.git $GOPATH/src/github.com/submariner-io
 git clone https://github.com/submariner-io/lighthouse.git  $GOPATH/src/github.com/submariner-io
-git clone https://github.com/coredns/coredns.git $GOPATH/src/github.com/submariner-io
+git clone https://github.com/submariner-io/submariner-operator.git  $GOPATH/src/github.com/submariner-io
 ```
 
 ### install sysctl

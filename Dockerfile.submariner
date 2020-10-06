@@ -1,5 +1,12 @@
 FROM registry-proxy.engineering.redhat.com/rh-osbs/ubi8:8-released as builder
 
+ARG GOCACHE
+ARG GOPATH
+ARG REMOTE_SOURCE
+ARG REMOTE_SOURCE_DIR
+RUN mv -f /etc/yum.repos.d/ubi.repo /tmp || :
+ADD atomic-reactor-repos/* /etc/yum.repos.d/
+
 ENV USE_VENDORIZED_BUILD_HARNESS=true \
 COMPONENT_NAME=submariner \
 COMPONENT_VERSION=1.0 \
@@ -30,9 +37,18 @@ RUN mkdir -p bin dist output
 RUN go mod download
 RUN go mod vendor
 RUN go build --ldflags '-X main.VERSION=${CI_UPSTREAM_VERSION}' -o bin/submariner-engine main.go
+
+RUN mv -fZ /tmp/ubi.repo /etc/yum.repos.d/ubi.repo || :
 #----------------------------------------#
 
 FROM registry-proxy.engineering.redhat.com/rh-osbs/ubi8-minimal:8-released
+
+ARG GOCACHE
+ARG GOPATH
+ARG REMOTE_SOURCE
+ARG REMOTE_SOURCE_DIR
+RUN mv -f /etc/yum.repos.d/ubi.repo /tmp || :
+ADD atomic-reactor-repos/* /etc/yum.repos.d/
 
 ENV REMOTE_SOURCE=. \
     REMOTE_SOURCE_DIR=/app \
@@ -84,3 +100,6 @@ LABEL com.redhat.component="submariner-container" \
       io.k8s.display-name="submariner-engine" \
       maintainer="['multi-cluster-networking@redhat.com']" \
       description="submariner-engine"
+
+RUN rm -f '/etc/yum.repos.d/odcs-410914-ac88f.repo' '/etc/yum.repos.d/odcs-410849-cbfd4.repo'
+RUN mv -fZ /tmp/ubi.repo /etc/yum.repos.d/ubi.repo || :

@@ -1,0 +1,93 @@
+#@follow_tag(openshift-golang-builder:rhel_8_golang_1.13)
+FROM registry-proxy.engineering.redhat.com/rh-osbs/openshift-golang-builder:v1.13.4-3.el8 AS builder
+
+ARG GOCACHE
+ARG GOPATH
+ARG REMOTE_SOURCE
+ARG REMOTE_SOURCE_DIR
+RUN mv -f /etc/yum.repos.d/ubi.repo /tmp || :
+# ADD atomic-reactor-repos/* /etc/yum.repos.d/
+
+ENV COMPONENT_NAME=submariner \
+COMPONENT_VERSION=0.4 \
+COMPONENT_TAG_EXTENSION=" " \
+REMOTE_SOURCE=. \
+REMOTE_SOURCE_DIR=/app \
+CI_UPSTREAM_VERSION="v0.4.0-rc2" \
+CI_CONTAINER_VERSION="v1"\
+CI_CONTAINER_RELEASE="1"
+
+# Cachito
+COPY $REMOTE_SOURCE $REMOTE_SOURCE_DIR
+
+WORKDIR $REMOTE_SOURCE_DIR
+
+RUN go mod download
+RUN go mod vendor
+
+RUN go build -o bin/submariner-operator cmd/manager/main.go
+
+RUN mv -fZ /tmp/ubi.repo /etc/yum.repos.d/ubi.repo || :
+
+#-----------------------------------------------------------------------------------------------#
+
+#@follow_tag(ubi8-minimal:8-released)
+FROM registry-proxy.engineering.redhat.com/rh-osbs/ubi8-minimal:8.2-345
+
+ARG GOCACHE
+ARG GOPATH
+ARG REMOTE_SOURCE
+ARG REMOTE_SOURCE_DIR
+RUN mv -f /etc/yum.repos.d/ubi.repo /tmp || :
+# ADD atomic-reactor-repos/* /etc/yum.repos.d/
+
+ENV REMOTE_SOURCE=. \
+    REMOTE_SOURCE_DIR=/app \
+    CI_UPSTREAM_VERSION="v0.4.0-rc2" \
+    CI_CONTAINER_VERSION="v1"\
+    CI_CONTAINER_RELEASE="1"
+
+ARG VCS_REF
+ARG VCS_URL
+ARG IMAGE_NAME
+ARG IMAGE_DESCRIPTION
+ARG SUMMARY
+
+RUN microdnf update && \
+    microdnf -y install --nodocs shadow-utils && \
+    microdnf clean all
+
+RUN adduser -r -l -u 1001010000 submariner
+
+COPY *.json /image-manifests/
+COPY --from=builder --chown=submariner:submariner $REMOTE_SOURCE_DIR/app/deploy /deploy
+COPY --from=builder --chown=submariner:submariner $REMOTE_SOURCE_DIR/app/bin/submariner-operator /usr/local/bin/submariner-operator
+
+RUN chmod a+x /usr/local/bin/submariner-operator
+
+RUN mkdir /licenses
+
+COPY --from=builder $REMOTE_SOURCE_DIR/app/LICENSE /licenses/
+
+USER 1001010000
+
+ENTRYPOINT ["/usr/local/bin/submariner-operator"]
+
+LABEL com.redhat.component="submariner-operator-container" \
+      name="submariner/submariner-operator-rhel8" \
+      version="v0.4" \
+      release="23" \
+      summary="submariner-operator" \
+      io.openshift.expose-services="" \
+      io.openshift.tags="submariner-operator,rhel8" \
+      io.openshift.wants="submariner-engine,submariner-route-agent,submariner-globalnet,lighthouse-agent,lighthouse-coredns" \
+      io.openshift.non-scalable="true" \
+      io.k8s.display-name="submariner-operator" \
+      io.k8s.description="submariner-operator" \
+      maintainer="['multi-cluster-networking@redhat.com']" \
+      description="submariner-operator"
+
+LABEL "com.redhat.license_terms"="https://www.redhat.com/agreements" "distribution-scope"="private" "vendor"="Red Hat, Inc." "build-date"="2020-10-05T11:47:01.156857" "architecture"="x86_64" "vcs-type"="git" "vcs-ref"="e622ecbe604438f34dbeac07517d2b2eba491089" "com.redhat.build-host"="cpt-1002.osbs.prod.upshift.rdu2.redhat.com" "url"="https://access.redhat.com/containers/#/registry.access.redhat.com/submariner/submariner-operator-rhel8/images/v0.4-23"
+
+RUN rm -f '/etc/yum.repos.d/odcs-410914-ac88f.repo' '/etc/yum.repos.d/odcs-410849-cbfd4.repo'
+RUN mv -fZ /tmp/ubi.repo /etc/yum.repos.d/ubi.repo || :
